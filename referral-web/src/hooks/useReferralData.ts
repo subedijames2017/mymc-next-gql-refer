@@ -50,6 +50,7 @@ type GqlSendReferralCodeResult = {
 };
 
 /* ---------------- Hook ---------------- */
+// By default we use "cus_123" as the demo customer ID
 export const useReferralData = (customerId: string = "cus_123") => {
   const { data, loading, error, refetch } = useQuery<GqlReferralSummary>(
     GET_REFERRAL_SUMMARY,

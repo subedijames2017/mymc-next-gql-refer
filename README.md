@@ -1,178 +1,237 @@
+# Referral Program – Monorepo
 
-# MYMC Monorepo — Referral Demo (API + Web)
+A small, two-app monorepo that demonstrates a referral dashboard:
 
-This repository contains **two apps**:
+- **`referral-api/`** – NestJS + GraphQL server with an **in‑memory seed** (JSON-like data) that exposes:
+  - `referralSummary(customerId)` – aggregated stats for a customer
+  - `sendReferralCode(code)` – simulates sending a referral code and appends a new `INVITED` referral in-memory
+- **`referral-web/`** – Next.js 14 app using Apollo Client to render the dashboard (Progress bar, credits, code actions, toast).
+
+> Designed to be dead simple to run locally with `npm ci && npm run dev` in each folder.
+
+---
+
+## Repo Layout
 
 ```
 .
-├─ referral-api   # NestJS GraphQL API (in-memory seed data)
-└─ referral-web   # Next.js web (Apollo Client)
+├── referral-api/            # NestJS GraphQL API (port 4000)
+│   ├── src/
+│   │   ├── mock/referral.seed.ts     # In-memory data + derivation + send helper
+│   │   └── referral/                 # Resolver, types/DTOs, service wrapper
+│   ├── package.json
+│   └── README.md (local api-specific notes, optional)
+│
+├── referral-web/            # Next.js UI (port 3000)
+│   ├── src/
+│   │   ├── app/
+│   │   │   └── page.tsx               # ReferralDashboard entry
+│   │   ├── graphql/queries.ts         # GQL operations
+│   │   ├── hooks/useReferralData.ts   # Hook mapping API → UI model
+│   │   └── components/referrals/…     # UI pieces (ProgressBar, CodeSection, etc.)
+│   ├── public/refer-icon.png
+│   └── package.json
+│
+└── README.md (this file)
 ```
 
-- **API**: exposes `referralSummary(customerId)` and `sendReferralCode(code)`
-- **Web**: small dashboard that consumes the API; shows summary and triggers the mutation
+---
+
+## Prereqs
+
+- Node.js 18+ (LTS recommended)
+- pnpm or npm (the scripts below use **npm**; `pnpm` works too)
+- Ports **3000** (web) and **4000** (api) must be free locally
 
 ---
 
-## Requirements
+## Quick Start (No Shortcuts)
 
-- **Node.js 18+** and **npm 9+**
-- Two terminals (one for API, one for web)
+We use `npm ci` for reproducible installs.
 
-> We use **in-memory/JSON seed data** for simplicity, per challenge brief.
-
----
-
-## Quick Start (straightforward, no shortcuts)
-
-### 1) Start the API (NestJS)
+### 1) API
 
 ```bash
 cd referral-api
-npm install
-npm run start:dev      # serves at http://localhost:4000/graphql
+npm ci
+npm run start:dev   # runs on http://localhost:4000/graphql
 ```
 
-You should see the GraphQL Playground at **http://localhost:4000/graphql**.
-
-### 2) Start the Web (Next.js)
+### 2) Web
 
 ```bash
 cd referral-web
-npm install
-# Set your API endpoint for the web app:
-# If not already present, create .env.local with the following line:
-# NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
-npm run dev            # serves at http://localhost:3000
+npm ci
+npm run dev         # runs on http://localhost:3000
 ```
 
-Open **http://localhost:3000**.
+The web app expects the API at `http://localhost:4000/graphql`. If you change the API port/url, set:
+```
+# referral-web/.env.local
+NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
+```
 
 ---
 
-## How Data Works (JSON / In‑Memory)
+## Assumptions & Shortcuts (explicit)
 
-The API uses **in-memory seed data** (see `referral-api/src/mock/referral.seed.ts`).  
-Key behavior:
+- **Email delivery** is mocked. `sendReferralCode` logs to console and adds a dummy `INVITED` referral.
+- **Auth** is not enforced yet; the UI queries by `customerId` (default `cus_123`).
+- **Storage** is **in-memory seed** only. No DB yet (see improvements below).
+- **CORS**: Dev-friendly open policy on local.
+- **Rates/abuse**: Not enforced in seed mode.
 
-- `referralSummary(customerId)` returns a computed summary from the seed for the given customer.
-- `sendReferralCode(code)` **simulates** sending a referral code:
-  - Finds the customer by `code` (falls back to `cus_123` if not found).
-  - Appends a new **INVITED** referral to the in-memory list (random friend).
-  - Returns `{ ok, message, timestamp, stats }` where `stats` reflect updated totals.
+---
 
-> **Note:** Because this is in-memory, state resets on server restart.
+## Switching Data Backends (Seed vs DB)
 
-### Switching to a DB (optional, if you choose to extend later)
-- Replace the seed imports in `referral.service.ts` with a repository/provider that reads/writes from your DB (SQLite/Mongo).
-- Mirror the same interface (`getSummary`, `sendReferralCode`) so your resolver stays unchanged.
-- This is not required for the challenge, but the service was kept thin to make a DB swap easy.
+Right now the API uses an **in-memory seed** in `src/mock/referral.seed.ts`. To keep the path to a DB simple:
+
+- Add a data adapter in `src/referral/data.adapter.ts` with two implementations:
+  - `MemoryAdapter` that delegates to the existing seed helpers (`getSummary`, `sendReferralCode`).
+  - `MongoAdapter` when/if you add a DB.
+- Toggle via env:
+  ```
+  # referral-api/.env
+  DATA_BACKEND=memory   # or mongo (future)
+  ```
+
+> The GraphQL schema and DTOs **do not change**; only the service wiring swaps adapters.
 
 ---
 
 ## Example GraphQL Operations
 
-**Query (summary):**
+### Query – Referral Summary
 ```graphql
-query {
+query ExampleSummary {
   referralSummary(customerId: "cus_123") {
     customerId
     code
-    program {
-      rewardAmount
-      friendDiscount
-      maxReferrals
-    }
-    stats {
-      referredCountYear
-      earnedTotal
-      redeemedTotal
-      availableCredit
-    }
+    program { rewardAmount friendDiscount maxReferrals }
+    stats   { referredCountYear earnedTotal redeemedTotal availableCredit }
   }
 }
 ```
 
-**Sample Response:**
-```json
-{
-  "data": {
-    "referralSummary": {
-      "customerId": "cus_123",
-      "code": "0180YNUP",
-      "program": { "rewardAmount": 20, "friendDiscount": 40, "maxReferrals": 25 },
-      "stats": { "referredCountYear": 4, "earnedTotal": 80, "redeemedTotal": 40, "availableCredit": 40 }
-    }
-  }
-}
-```
-
-**Mutation (send code):**
+### Mutation – Send Referral Code
+Current seed returns success metadata and re-derives stats after adding a new `INVITED` entry.
 ```graphql
-mutation {
+mutation SendCode {
   sendReferralCode(code: "0180YNUP") {
     ok
     message
     timestamp
-    stats {
-      referredCountYear
-      earnedTotal
-      redeemedTotal
-      availableCredit
+    # In the current seed we also return stats for convenience:
+    # stats { referredCountYear earnedTotal redeemedTotal availableCredit }
+  }
+}
+```
+
+If you extend your schema to return the **updated summary** directly (recommended):
+```graphql
+mutation SendCodeBetter {
+  sendReferralCode(code: "0180YNUP") {
+    ok
+    message
+    timestamp
+    summary {
+      customerId
+      code
+      program { rewardAmount friendDiscount maxReferrals }
+      stats   { referredCountYear earnedTotal redeemedTotal availableCredit }
     }
   }
 }
 ```
 
-**Sample Response:**
-```json
-{
-  "data": {
-    "sendReferralCode": {
-      "ok": true,
-      "message": "Referral code 0180YNUP sent at 2025-06-01T12:34:56.789Z (added john.doe1234@example.com)",
-      "timestamp": "2025-06-01T12:34:56.789Z",
-      "stats": { "referredCountYear": 5, "earnedTotal": 80, "redeemedTotal": 40, "availableCredit": 40 }
+---
+
+## Web Notes
+
+- Apollo client is wired via `@apollo/client-integration-nextjs` provider.
+- Toasts live under `src/components/ui/toast` and `src/hooks/use-toast`.
+- The dashboard shows:
+  - Hero card with “Send Code” (opens a send action; currently no friend form)
+  - Progress bar (derived stats)
+  - Credits strip (Ready to use / Total referrals YTD / Redeemed)
+
+---
+
+## Project-Specific Improvements & Observability
+
+This app is a NestJS GraphQL API + Next.js UI with an in-memory seed. Below are focused, project-specific next steps.
+
+### 1) Database Architecture (when moving off seed)
+**Goal:** keep the same Pattern API/DTO shapes; add integrity & scale.
+
+- **Rules**
+  - Normalize emails (lowercase/trim) before insert/update.
+  - Do **not** store `earnedTotal`, `redeemedTotal`, `availableCredit` → compute via aggregation (`$group`, `$sum`).
+  - Optional: `invite_events` collection (for history/resends/audit).
+
+### 2) Login & Authentication
+**Goal:** ensure requests are scoped to the right customer.
+
+- **Backend**
+  - Issue **JWT** on login (demo token is fine for this project) with `customerId` claim.
+  - Add a GraphQL auth guard that injects `customerId` into resolvers.
+  - Rate limit: per-customer & per-IP (e.g., 10 invites/24h).
+- **Frontend**
+  - Store token in httpOnly cookie if you want SSR-friendly auth.
+  - Attach `Authorization: Bearer <token>` on Apollo client.
+  - Remove `customerId` from queries; derive from token on the server.
+
+### 3) “Send Code” → Form Popup (collect friend details)
+**Goal:** make the invite real instead of blind “send”.
+
+- **UX**
+  - Button opens a modal with fields: **Friend name** (optional), **Friend email** (required), optional message.
+  - Disable submit while sending; show success toast, then refetch summary.
+- **GraphQL**
+  ```graphql
+  input FriendInput { name: String, email: String! }
+
+  mutation SendReferralCode($code: String!, $friend: FriendInput!) {
+    sendReferralCode(code: $code, friend: $friend) {
+      ok
+      message
+      timestamp
+      summary {
+        customerId
+        code
+        program { rewardAmount friendDiscount maxReferrals }
+        stats   { referredCountYear earnedTotal redeemedTotal availableCredit }
+      }
+      error { code message } # if you adopt a typed error union
     }
   }
-}
-```
+  ```
+- **Validation**
+  - Reject disposable domains; enforce one invite per `(referredBy, friend.email)`.
+  - Idempotency key `(code, friend.email)` for 5–10 min to prevent accidental duplicates.
 
----
-
-## Scripts
-
-### API (`referral-api/package.json`)
-- `npm run start:dev` — Nest dev mode with hot reload  
-- `npm run build` — compile to `dist/`  
-- `npm run start:prod` — start compiled app (`node dist/main`)  
-- `npm test` — if configured by Nest (optional)
-
-### Web (`referral-web/package.json`)
-- `npm run dev` — Next.js dev server  
-- `npm run build` — production build  
-- `npm start` — start production server  
-- `npm run lint` — run ESLint (if configured)
-
----
-
-## Assumptions / Shortcuts
-
-- No authentication; one public referral dashboard.
-- No email is actually sent—the mutation simulates success and updates the in-memory dataset.
-- A single GraphQL endpoint is used by the web app, provided via `NEXT_PUBLIC_GRAPHQL_ENDPOINT`.
-- Styling via Tailwind/shadcn (you can tweak tokens in `tailwind.config.ts` / `globals.css`).
-
----
-
-## Troubleshooting
-
-- **Web can’t reach API:** ensure the API is running at `http://localhost:4000/graphql` and your `.env.local` matches.
-- **CORS**: Nest GraphQL typically enables CORS by default; if you customized it, re-enable CORS in `main.ts`.
-- **Lockfile mismatch with `npm ci`**: run `npm install` once to update `package-lock.json`, commit it, then `npm ci` works again.
-
----
+### 4) Observability (simple but useful)
+- **Structured logs** (JSON)
+  ```json
+  {"event":"send_referral","customerId":"cus_123","friendEmailHash":"<sha256>","status":"success","ts":"2025-09-03T12:00:00Z","requestId":"..."}
+  ```
+  *Hash emails; don’t log PII.*
+- **Counters (console now, Prometheus later)**
+  - `referral.invites_sent_total{customerId}`
+  - `referral.signups_total{customerId}`
+  - `referral.redemptions_total{customerId}`
+  - `referral.conversion_rate`
+  - `referral.errors_total{operation}`
+- **Tracing-lite**
+  - Generate `requestId` per request; include in logs and GraphQL `extensions`.
+- **Basic alerts**
+  - Warn if `errors_total` spikes or conversion < threshold over 24h.
 
 ## License
 
-For the purposes of the coding challenge. Use as a reference/starter.
+MIT (for the purposes of the coding challenge).
+
+---
+
+Happy hacking! ✨
