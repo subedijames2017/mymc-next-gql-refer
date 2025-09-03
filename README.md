@@ -45,15 +45,13 @@ A small, two-app monorepo that demonstrates a referral dashboard:
 
 ---
 
-## Quick Start (No Shortcuts)
-
-We use `npm ci` for reproducible installs.
+## Quick Start
 
 ### 1) API
 
 ```bash
 cd referral-api
-npm ci
+npm install
 npm run start:dev   # runs on http://localhost:4000/graphql
 ```
 
@@ -61,16 +59,8 @@ npm run start:dev   # runs on http://localhost:4000/graphql
 
 ```bash
 cd referral-web
-npm ci
+npm install
 npm run dev         # runs on http://localhost:3000
-```
-
-The web app expects the API at `http://localhost:4000/graphql`. If you change the API port/url, set:
-```
-# referral-web/.env.local
-NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
-```
-
 ---
 
 ## Assumptions & Shortcuts (explicit)
