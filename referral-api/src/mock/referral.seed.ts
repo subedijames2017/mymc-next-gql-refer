@@ -1,8 +1,3 @@
-// mock/referral.seed.ts
-
-// If you want exact typing at the source, keep this import.
-// If your ReferralSummary DTO does NOT include `referrals`, either
-// remove the `referrals` block below or change the return type to add `referrals?: Referral[]`.
 import type { ReferralSummary } from '../referral/referral-summary.dto';
 
 /* ---------------- Types ---------------- */

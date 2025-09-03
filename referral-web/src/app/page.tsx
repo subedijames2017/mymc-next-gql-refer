@@ -1,4 +1,4 @@
-import ReferralsClient from "@/components/referrals-client";
+import ReferralsClient from "@/components/ReferralDashboard";
 import { Suspense } from "react";
 
 export default function Page() {

@@ -1,16 +1,22 @@
-// referral/referral.service.ts
-import { Injectable } from '@nestjs/common';
+// referral.service.ts
+import {
+  Injectable,
+  BadRequestException,
+} from '@nestjs/common';
 import { getSummary, sendReferralCode } from '../mock/referral.seed';
-import type { ReferralSummary } from './referral-summary.dto';
+import { ReferralSummary, SendResult } from './referral.types';
 
 @Injectable()
 export class ReferralService {
   getSummary(customerId: string): ReferralSummary {
+    // getSummary should throw NotFoundException if customer missing
     return getSummary(customerId);
   }
 
-  sendCode(code: string) {
-    // delegate to seed helper (keeps service thin)
+  sendCode(code: string): SendResult {
+    if (!code) throw new BadRequestException('code is required');
+
+    // sendReferralCode should throw BadRequestException if code invalid
     return sendReferralCode(code);
   }
 }

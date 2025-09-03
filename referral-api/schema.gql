@@ -28,25 +28,10 @@ type Query {
   referralSummary(customerId: String!): ReferralSummary!
 }
 
-type Referral {
-  createdAt: String!
-  friend: Friend!
-  id: ID!
-  rewardEarned: Float!
-  status: ReferralStatus!
-}
-
-enum ReferralStatus {
-  INVITED
-  SIGNED_UP
-}
-
 type ReferralSummary {
   code: String!
   customerId: ID!
   program: Program!
-  referrals: [Referral!]!
-  shareUrl: String!
   stats: CreditStats!
 }
 

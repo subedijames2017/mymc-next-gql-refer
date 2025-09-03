@@ -49,10 +49,8 @@ import {
   export class ReferralSummary {
     @Field(() => ID)    customerId: string;
     @Field()            code: string;
-    @Field()            shareUrl: string;
     @Field(() => Program)    program: Program;
     @Field(() => CreditStats) stats: CreditStats;
-    @Field(() => [Referral])  referrals: Referral[];
   }
   
   @ObjectType()
