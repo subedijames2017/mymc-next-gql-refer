@@ -1,0 +1,58 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type CreditStats {
+  availableCredit: Float!
+  earnedTotal: Float!
+  redeemedTotal: Float!
+  referredCountYear: Int!
+}
+
+type Friend {
+  email: String!
+  name: String!
+}
+
+type Mutation {
+  sendReferralCode(code: String!): SendResult!
+}
+
+type Program {
+  friendDiscount: Float!
+  maxReferrals: Int!
+  rewardAmount: Float!
+}
+
+type Query {
+  referralSummary(customerId: String!): ReferralSummary!
+}
+
+type Referral {
+  createdAt: String!
+  friend: Friend!
+  id: ID!
+  rewardEarned: Float!
+  status: ReferralStatus!
+}
+
+enum ReferralStatus {
+  INVITED
+  SIGNED_UP
+}
+
+type ReferralSummary {
+  code: String!
+  customerId: ID!
+  program: Program!
+  referrals: [Referral!]!
+  shareUrl: String!
+  stats: CreditStats!
+}
+
+type SendResult {
+  message: String!
+  ok: Boolean!
+  stats: CreditStats!
+  timestamp: String!
+}
