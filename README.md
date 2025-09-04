@@ -2,12 +2,12 @@
 
 A small, two-app monorepo that demonstrates a referral dashboard:
 
-- **`referral-api/`** – NestJS + GraphQL server with an **in‑memory seed** (JSON-like data) that exposes:
+- **`referral-api/`** – NestJS + GraphQL server with an **in-memory seed** (JSON-like data) that exposes:
   - `referralSummary(customerId)` – aggregated stats for a customer
-  - `sendReferralCode(code)` – simulates sending a referral code and appends a new `INVITED` referral in-memory
-- **`referral-web/`** – Next.js 14 app using Apollo Client to render the dashboard (Progress bar, credits, code actions, toast).
+  - `sendReferralCode(code)` – simulates sending a referral code and appends a new `INVITED` referral in memory
+- **`referral-web/`** – Next.js 14 app using Apollo Client to render the dashboard (progress bar, credits, send code).
 
-> Designed to be dead simple to run locally with `npm ci && npm run dev` in each folder.
+Designed to be dead simple to run locally.
 
 ---
 
@@ -15,20 +15,55 @@ A small, two-app monorepo that demonstrates a referral dashboard:
 
 ```
 .
-├── referral-api/            # NestJS GraphQL API (port 4000)
+├── referral-api/                      # NestJS GraphQL API (port 4000)
 │   ├── src/
-│   │   ├── mock/referral.seed.ts     # In-memory data + derivation + send helper
-│   │   └── referral/                 # Resolver, types/DTOs, service wrapper
+│   │   ├── main.ts
+│   │   ├── app.module.ts              # thin root: GraphQL + feature module
+│   │   └── referral/
+│   │       ├── referral.module.ts
+│   │       ├── referral.resolver.ts   # GraphQL resolver (reads/mutations)
+│   │       ├── referral.service.ts    # business logic (uses seed)
+│   │       ├── dto/
+│   │       │   └── referral-summary.dto.ts
+│   │       ├── types/
+│   │       │   └── referral.types.ts
+│   │       └── data/
+│   │           └── referral.seed.ts   # in-memory data + aggregators + send helper
 │   ├── package.json
-│   └── README.md (local api-specific notes, optional)
+│   └── README.md (optional api notes)
 │
-├── referral-web/            # Next.js UI (port 3000)
+├── referral-web/                      # Next.js UI (port 3000)
 │   ├── src/
 │   │   ├── app/
-│   │   │   └── page.tsx               # ReferralDashboard entry
-│   │   ├── graphql/queries.ts         # GQL operations
-│   │   ├── hooks/useReferralData.ts   # Hook mapping API → UI model
-│   │   └── components/referrals/…     # UI pieces (ProgressBar, CodeSection, etc.)
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx               # renders <ReferralDashboard customerId="cus_123" />
+│   │   │   └── providers.tsx          # ApolloProvider
+│   │   ├── components/
+│   │   │   └── ui/                    # generic UI-only bits
+│   │   │       ├── ProgressBar.tsx
+│   │   │       ├── button.tsx, card.tsx, ...
+│   │   ├── features/
+│   │   │   └── referrals/
+│   │   │       ├── components/
+│   │   │       │   ├── ReferralDashboard.tsx   # container (fetch once)
+│   │   │       │   ├── ReferralMobile.tsx      # presentational
+│   │   │       │   ├── ReferralDesktop.tsx     # presentational
+│   │   │       │   ├── CodeSection.tsx
+│   │   │       │   ├── CreditSection.tsx
+│   │   │       │   ├── ReferralSkeleton.tsx
+│   │   │       │   └── index.ts
+│   │   │       ├── graphql/
+│   │   │       │   ├── fragments.ts
+│   │   │       │   ├── queries.ts
+│   │   │       │   └── mutations.ts
+│   │   │       ├── hooks/
+│   │   │       │   ├── useReferralSummary.ts
+│   │   │       │   └── useSendReferral.ts
+│   │   │       └── types.ts           # light DTO types for the views
+│   │   ├── lib/
+│   │   │   ├── apollo-client.ts
+│   │   │   └── env.ts
+│   │   └── styles/globals.css
 │   ├── public/refer-icon.png
 │   └── package.json
 │
@@ -40,8 +75,8 @@ A small, two-app monorepo that demonstrates a referral dashboard:
 ## Prereqs
 
 - Node.js 18+ (LTS recommended)
-- pnpm or npm (the scripts below use **npm**; `pnpm` works too)
-- Ports **3000** (web) and **4000** (api) must be free locally
+- npm or pnpm (examples use **npm**)
+- Ports **3000** (web) and **4000** (api) free locally
 
 ---
 
@@ -52,176 +87,129 @@ A small, two-app monorepo that demonstrates a referral dashboard:
 ```bash
 cd referral-api
 npm install
-npm run start:dev   # runs on http://localhost:4000/graphql
+npm run start:dev   # http://localhost:4000/graphql
 ```
 
 ### 2) Web
 
 ```bash
-cd referral-web
+cd ../referral-web
 npm install
-npm run dev         # runs on http://localhost:3000
----
+npm run dev         # http://localhost:3000
+```
 
-## Assumptions & Shortcuts (explicit)
+## API – GraphQL Shape
 
-- **Email delivery** is mocked. `sendReferralCode` logs to console and adds a dummy `INVITED` referral.
-- **Auth** is not enforced yet; the UI queries by `customerId` (default `cus_123`).
-- **Storage** is **in-memory seed** only. No DB yet (see improvements below).
-- **CORS**: Dev-friendly open policy on local.
-- **Rates/abuse**: Not enforced in seed mode.
+The API is **code-first** (Nest GraphQL). DTOs drive the schema. Data is derived from `src/referral/data/referral.seed.ts`.
 
----
-
-## Switching Data Backends (Seed vs DB)
-
-Right now the API uses an **in-memory seed** in `src/mock/referral.seed.ts`. To keep the path to a DB simple:
-
-- Add a data adapter in `src/referral/data.adapter.ts` with two implementations:
-  - `MemoryAdapter` that delegates to the existing seed helpers (`getSummary`, `sendReferralCode`).
-  - `MongoAdapter` when/if you add a DB.
-- Toggle via env:
-  ```
-  # referral-api/.env
-  DATA_BACKEND=memory   # or mongo (future)
-  ```
-
-> The GraphQL schema and DTOs **do not change**; only the service wiring swaps adapters.
-
----
-
-## Example GraphQL Operations
-
-### Query – Referral Summary
+### Query: `referralSummary(customerId: String!): ReferralSummaryDTO`
 ```graphql
-query ExampleSummary {
-  referralSummary(customerId: "cus_123") {
+query ReferralSummary($customerId: String!) {
+  referralSummary(customerId: $customerId) {
     customerId
     code
     program { rewardAmount friendDiscount maxReferrals }
     stats   { referredCountYear earnedTotal redeemedTotal availableCredit }
-  }
-}
-```
-
-### Mutation – Send Referral Code
-Current seed returns success metadata and re-derives stats after adding a new `INVITED` entry.
-```graphql
-mutation SendCode {
-  sendReferralCode(code: "0180YNUP") {
-    ok
-    message
-    timestamp
-    # In the current seed we also return stats for convenience:
-    # stats { referredCountYear earnedTotal redeemedTotal availableCredit }
-  }
-}
-```
-
-If you extend your schema to return the **updated summary** directly (recommended):
-```graphql
-mutation SendCodeBetter {
-  sendReferralCode(code: "0180YNUP") {
-    ok
-    message
-    timestamp
-    summary {
-      customerId
-      code
-      program { rewardAmount friendDiscount maxReferrals }
-      stats   { referredCountYear earnedTotal redeemedTotal availableCredit }
+    referrals {
+      id
+      friend { name email }
+      status
+      rewardEarned
+      createdAt
     }
   }
 }
 ```
 
----
+### Mutation: `sendReferralCode(code: String!): SendResult`
+The seed simulates sending a code by **adding a new `INVITED` referral** and re-computing stats.
 
-## Web Notes
-
-- Apollo client is wired via `@apollo/client-integration-nextjs` provider.
-- Toasts live under `src/components/ui/toast` and `src/hooks/use-toast`.
-- The dashboard shows:
-  - Hero card with “Send Code” (opens a send action; currently no friend form)
-  - Progress bar (derived stats)
-  - Credits strip (Ready to use / Total referrals YTD / Redeemed)
-
----
-
-## Project-Specific Improvements & Observability
-
-This app is a NestJS GraphQL API + Next.js UI with an in-memory seed. Below are focused, project-specific next steps.
-
-### 1) Database Architecture (when moving off seed)
-**Goal:** keep the same Pattern API/DTO shapes; add integrity & scale.
-
-- **Rules**
-  - Normalize emails (lowercase/trim) before insert/update.
-  - Do **not** store `earnedTotal`, `redeemedTotal`, `availableCredit` → compute via aggregation (`$group`, `$sum`).
-  - Optional: `invite_events` collection (for history/resends/audit).
-
-### 2) Login & Authentication
-**Goal:** ensure requests are scoped to the right customer.
-
-- **Backend**
-  - Issue **JWT** on login (demo token is fine for this project) with `customerId` claim.
-  - Add a GraphQL auth guard that injects `customerId` into resolvers.
-  - Rate limit: per-customer & per-IP (e.g., 10 invites/24h).
-- **Frontend**
-  - Store token in httpOnly cookie if you want SSR-friendly auth.
-  - Attach `Authorization: Bearer <token>` on Apollo client.
-  - Remove `customerId` from queries; derive from token on the server.
-
-### 3) “Send Code” → Form Popup (collect friend details)
-**Goal:** make the invite real instead of blind “send”.
-
-- **UX**
-  - Button opens a modal with fields: **Friend name** (optional), **Friend email** (required), optional message.
-  - Disable submit while sending; show success toast, then refetch summary.
-- **GraphQL**
-  ```graphql
-  input FriendInput { name: String, email: String! }
-
-  mutation SendReferralCode($code: String!, $friend: FriendInput!) {
-    sendReferralCode(code: $code, friend: $friend) {
-      ok
-      message
-      timestamp
-      summary {
-        customerId
-        code
-        program { rewardAmount friendDiscount maxReferrals }
-        stats   { referredCountYear earnedTotal redeemedTotal availableCredit }
-      }
-      error { code message } # if you adopt a typed error union
-    }
+```graphql
+mutation SendReferralCode($code: String!) {
+  sendReferralCode(code: $code) {
+    status       # "success" | "error" (seed)
+    message
+    timestamp
+    stats { referredCountYear earnedTotal redeemedTotal availableCredit }
   }
-  ```
-- **Validation**
-  - Reject disposable domains; enforce one invite per `(referredBy, friend.email)`.
-  - Idempotency key `(code, friend.email)` for 5–10 min to prevent accidental duplicates.
+}
+```
 
-### 4) Observability (simple but useful)
-- **Structured logs** (JSON)
-  ```json
-  {"event":"send_referral","customerId":"cus_123","friendEmailHash":"<sha256>","status":"success","ts":"2025-09-03T12:00:00Z","requestId":"..."}
-  ```
-  *Hash emails; don’t log PII.*
-- **Counters (console now, Prometheus later)**
-  - `referral.invites_sent_total{customerId}`
-  - `referral.signups_total{customerId}`
-  - `referral.redemptions_total{customerId}`
-  - `referral.conversion_rate`
-  - `referral.errors_total{operation}`
-- **Tracing-lite**
-  - Generate `requestId` per request; include in logs and GraphQL `extensions`.
-- **Basic alerts**
-  - Warn if `errors_total` spikes or conversion < threshold over 24h.
+> If you later prefer `{ ok: Boolean! }` instead of `status`, swap the DTO and keep the resolver mapping.
+
+---
+
+## Web – Data Flow
+
+- **Apollo** is provided in `src/app/providers.tsx`; the client is created in `src/lib/apollo-client.ts`.
+- **Feature-first**: all referral screens live under `src/features/referrals`.
+- **Container + Views**: `ReferralDashboard` fetches once and renders **Mobile** or **Desktop** variants (presentational-only).
+- **Fragments** keep operations consistent across queries/mutations.
+
+### Hooks
+- `useReferralSummary(customerId)` → wraps the `ReferralSummary` query.
+- `useSendReferral()` → wraps the `SendReferralCode` mutation and `refetchQueries: ['ReferralSummary']`.
+
+### Components
+- `ReferralMobile` / `ReferralDesktop` share the same props interface (`ReferralViewProps`) defined in `features/referrals/types.ts`.
+- `ProgressBar`, `Button`, `Card` live under `src/components/ui/` and are reused across features.
+
+### Page
+`src/app/page.tsx` renders:
+
+```tsx
+import { ReferralDashboard } from '@/features/referrals/components';
+
+export default function Page() {
+  return <ReferralDashboard customerId="cus_123" />;
+}
+```
+
+---
+
+## Assumptions & Shortcuts
+
+- **Email delivery** is mocked; mutation logs and updates the in-memory dataset.
+- **Auth** is omitted for the challenge; the UI uses a fixed `customerId` (`cus_123`).
+- **Persistence** is in memory; no DB. (See “Improvements” for a DB path.)
+- **CORS** is permissive for local dev.
+
+---
+
+## Switching Data Backends (Seed → DB)
+
+Keep the GraphQL DTOs the same; switch only the service’s data source.
+
+1. Add a repository/adapter in the API service layer (e.g., `ReferralRepository`).
+2. Provide `MemoryRepository` (current seed) and a future `MongoRepository`/`PrismaRepository`.
+3. Toggle via env:
+   ```
+   # referral-api/.env
+   DATA_BACKEND=memory   # or "mongo" later
+   ```
+
+---
+
+## Example UI Interaction
+
+- Press **Send Code Now**:
+  - Calls `sendReferralCode(code)`.
+  - Shows “Sending…” (button `aria-busy`) during mutation.
+  - On success: toast + refetch `ReferralSummary` to update credits/progress.
+
+---
+
+## Nice-to-Have Improvements
+
+- **Friend form** in a modal (`name`, `email`) → extend mutation input.
+- **Auth** (JWT) so the server derives `customerId` from the token, not the client.
+- **Testing**:
+  - API: service unit tests for `deriveStatsForCustomer`, `getSummary`.
+  - Web: React Testing Library + `MockedProvider` for `ReferralDashboard`.
+- **Observability**: structured logs for `send_referral` (hash PII), simple counters.
+
+---
 
 ## License
 
 MIT (for the purposes of the coding challenge).
-
----
-
-Happy hacking! ✨

@@ -3,9 +3,9 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useReferralData } from "@/hooks/useReferralData";
-import ReferralMobile from "./referrals/ReferralMobile";
-import ReferralDesktop from "./referrals/ReferralDesktop";
+import { useReferralData } from "@/features/referrals/hooks/useReferralData";
+import ReferralMobile from "./ReferralMobile";
+import ReferralDesktop from "./ReferralDesktop";
 
 const ReferralDashboard: React.FC = () => {
   const { data, loading, error, sendingCode, sendReferralCode } = useReferralData();

@@ -1,40 +1,45 @@
-import type { ReferralSummary } from '../referral/referral-summary.dto';
+import type { ReferralSummary } from '../dto/referral-summary.dto';
+import type { ReferralResponse } from '../dto/referal-response.sto';
 
-/* ---------------- Types ---------------- */
+/** Status of a referral invitation lifecycle. */
 export type ReferralStatus = 'INVITED' | 'SIGNED_UP';
 
+/** A single referral record (friend invited by a customer). */
 export interface Referral {
   id: string;
   friend: { name: string; email: string };
   status: ReferralStatus;          // "INVITED" | "SIGNED_UP"
   rewardEarned: number;            // $20 when SIGNED_UP, else 0
-  createdAt: string;               // ISO
+  createdAt: string;               // ISO 8601 timestamp (UTC)
   referredBy: string;              // customerId
 }
+
 
 export interface Redemption {
   id: string;
   amount: number;                  // dollars redeemed (positive)
-  createdAt: string;               // ISO
+  createdAt: string;               // ISO 8601 timestamp (UTC)
   redeemedBy: string;              // customerId
 }
+
 
 export interface Customer {
   id: string;
   code: string;
-  offAmount: number;               // you earn per sign-up (e.g. 20)
-  friendDiscount: number;          // friend gets off first order (e.g. 40)
-  maxReferrals: number;
+  offAmount: number;               // amount the referrer earns per sign-up (e.g. 20)
+  friendDiscount: number;          // discount the friend gets on first order (e.g. 40)
+  maxReferrals: number;            // program cap
 }
 
+// In-memory "database" of customers, referrals, and redemptions.
 export interface ReferralDataSet {
   customers: Customer[];
   referrals: Referral[];
   redemptions: Redemption[];
 }
 
-/* ---------------- Seed (multi-customer; filtered at read time) ---------------- */
 export const referralData: ReferralDataSet = {
+  // NOTE: In a real app customer codes would be unique and randomly generated and can be very different from data below
   customers: [
     { id: 'cus_123', code: '0180YNUP', offAmount: 20, friendDiscount: 40, maxReferrals: 25 },
     { id: 'cus_456', code: 'ZZ9PLUTO', offAmount: 15, friendDiscount: 25, maxReferrals: 15 },
@@ -61,14 +66,18 @@ export const referralData: ReferralDataSet = {
   ],
 } as const;
 
-/* ---------------- tiny helpers ---------------- */
+// Sample data for generating random friend names and email addresses.
 const FIRST = ['Alex','Priya','Tom','Sara','Ivy','Zoe','Omar','Liam','Nora','Elena','Miles','Jun','Aria','Mateo','Ava'];
 const LAST  = ['Chen','Singh','Lee','Park','Nguyen','Ali','Brown','Garcia','Rao','Kim','Silva','Mehta','Khan','Patel','Lopez'];
 const DOMAINS = ['example.com','mail.test','inbox.dev','postbox.app'];
 
+// Pick a random element from an array.
 function rand<T>(arr: T[]) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// Simplistic slugifier: lowercase, strip non-alpha.
 function slug(s: string)   { return s.toLowerCase().replace(/[^a-z]+/g, ''); }
 
+// Generate a random friend name and email address.
 function randomFriend() {
   const first = rand(FIRST);
   const last  = rand(LAST);
@@ -79,6 +88,7 @@ function randomFriend() {
   };
 }
 
+// Compute Next referral ID by finding max existing numeric suffix and adding 1.
 function nextReferralId() {
   const max = referralData.referrals.reduce((m, r) => {
     const n = Number(String(r.id).replace(/\D+/g, '')) || 0;
@@ -87,12 +97,13 @@ function nextReferralId() {
   return `r${max + 1}`;
 }
 
+/** Find a customerId given a referral `code`. Returns null if not found. */
 function findCustomerIdByCode(code: string): string | null {
   const c = referralData.customers.find((x) => x.code === code);
   return c?.id ?? null;
 }
 
-/* ---------------- Derivers & selectors ---------------- */
+//Custom Function To drive Stats for a customer
 export function deriveStatsForCustomer(customerId: string) {
   const nowYear = new Date().getFullYear();
 
@@ -110,10 +121,6 @@ export function deriveStatsForCustomer(customerId: string) {
   return { referredCountYear, earnedTotal, redeemedTotal, availableCredit };
 }
 
-/**
- * Pure aggregator returning the summary.
- * If your DTO doesn't include `referrals`, remove that property below.
- */
 export function getSummary(
   customerId: string,
 ): ReferralSummary & { referrals?: Referral[] } {
@@ -140,17 +147,13 @@ export function getSummary(
     referrals,
   };
 }
+// simple non-blocking delay
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
-/* ---------------- Mutation-like helper ---------------- */
-/**
- * Adds a new INVITED referral for the customer resolved by `code`,
- * then returns an enriched payload including the updated summary.
- * If `code` isn't found, it defaults to cus_123 so the demo keeps working.
- */
-export function sendReferralCode(code: string) {
+// Simulate sending a referral code by creating a new "INVITED" referral record.
+export async function sendReferralCode(code: string): Promise<ReferralResponse> {
   const customerId = findCustomerIdByCode(code) ?? 'cus_123';
 
-  // append a new INVITED referral
   const newReferral: Referral = {
     id: nextReferralId(),
     friend: randomFriend(),
@@ -161,16 +164,19 @@ export function sendReferralCode(code: string) {
   };
   referralData.referrals.push(newReferral);
 
-  // recompute
-  const summary  = getSummary(customerId);
+  const summary = getSummary(customerId);
 
-  const timestamp = new Date().toISOString();
-  const message   = `Referral code ${code} sent at ${timestamp} (added ${newReferral.friend.email})`;
+  await sleep(1000); // 2s delay
+
+  // local date+time string
+  const timestamp = new Date().toLocaleString();
+
+  const message = `Referral code ${code} sent at ${timestamp} (added ${newReferral.friend.email})`;
 
   return {
-    ok: true,
+    success: true,
     message,
     timestamp,
-    stats: summary.stats, // send stats directly
+    stats: summary.stats,
   };
 }

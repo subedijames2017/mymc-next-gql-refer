@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import ApolloProviderNext from "./apollo-provider";
+import ApolloProviderNext from "./provider";
 
 export const metadata: Metadata = {
   title: "Referral Credits",

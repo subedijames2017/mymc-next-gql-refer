@@ -23,7 +23,7 @@ export const GET_REFERRAL_SUMMARY = gql`
 export const SEND_REFERRAL_CODE = gql`
   mutation SendReferralCode($code: String!) {
     sendReferralCode(code: $code) {
-      ok
+      success
       message
       timestamp
       stats {

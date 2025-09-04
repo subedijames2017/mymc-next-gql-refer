@@ -1,11 +1,10 @@
-// referral.resolver.ts
 import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { ReferralService } from './referral.service';
-import { ReferralSummary, SendResult } from './referral.types';
+import { ReferralSummary, SendResult } from './types/referral.types';
 
 @Resolver()
 export class ReferralResolver {

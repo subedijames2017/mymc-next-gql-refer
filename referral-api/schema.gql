@@ -37,7 +37,7 @@ type ReferralSummary {
 
 type SendResult {
   message: String!
-  ok: Boolean!
   stats: CreditStats!
+  success: Boolean!
   timestamp: String!
 }

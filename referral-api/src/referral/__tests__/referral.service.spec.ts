@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
-import { ReferralService } from './referral.service';
+import { ReferralService } from '../referral.service';
 
 // Mock the seed functions used by the service
-jest.mock('../mock/referral.seed', () => ({
+jest.mock('../data/referral.seed.ts', () => ({
   getSummary: jest.fn(),
   sendReferralCode: jest.fn(),
 }));
 
-import { getSummary, sendReferralCode } from '../mock/referral.seed';
+import { getSummary, sendReferralCode } from '../data/referral.seed';
 
 describe('ReferralService', () => {
   let service: ReferralService;
