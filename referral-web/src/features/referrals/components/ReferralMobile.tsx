@@ -6,6 +6,8 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import CodeSection from './CodeSection';
 import CreditSection from './CreditSection';
 import type { ReferralViewProps } from '../types/types';
+const REFERAL_LIMIT = 25;
+
 
 export default function ReferralMobile({ data, sendingCode, onSendCode }: ReferralViewProps) {
   const {
@@ -18,6 +20,7 @@ export default function ReferralMobile({ data, sendingCode, onSendCode }: Referr
     readyToUse,
     earnedCredits,
   } = data;
+  const reachedCap = data.totalReferralsThisYear >= REFERAL_LIMIT;
 
   return (
     <div className="mx-auto max-w-md space-y-8 p-6">
@@ -51,7 +54,7 @@ export default function ReferralMobile({ data, sendingCode, onSendCode }: Referr
           <Button
             type="button"
             onClick={() => onSendCode()} 
-            disabled={sendingCode}
+            disabled={sendingCode || reachedCap}
             aria-busy={sendingCode}
             className="mb-6 h-auto w-full cursor-pointer rounded-3xl bg-success py-3 font-medium text-success-foreground hover:bg-success/90"
           >

@@ -7,8 +7,12 @@ import { Button } from "@/components/ui/button";
 import ProgressBar from "../../../components/ui/ProgressBar";
 import CodeSection from "./CodeSection";
 import type { ReferralViewProps } from "../types/types";
+const REFERAL_LIMIT = 25;
 
 const ReferralDesktop: React.FC<ReferralViewProps> = ({ data, sendingCode, onSendCode }) => {
+  // Disable send when total referrals >= REFERAL_LIMIT
+  const reachedCap = data.totalReferralsThisYear >= REFERAL_LIMIT;
+
   return (
     <div className="px-8 pt-10 pb-16 space-y-10">
       <Card className="p-10 bg-muted border-none">
@@ -48,7 +52,7 @@ const ReferralDesktop: React.FC<ReferralViewProps> = ({ data, sendingCode, onSen
             <Button
               type="button"
               onClick={onSendCode}
-              disabled={sendingCode}
+              disabled={sendingCode || reachedCap}
               className="w-full bg-success hover:bg-success/90 text-success-foreground font-medium py-3 h-auto rounded-full cursor-pointer"
             >
               {sendingCode ? (
