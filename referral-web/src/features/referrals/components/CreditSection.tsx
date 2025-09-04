@@ -2,14 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-
-interface CreditSectionProps {
-  amount: number;
-  totalReferrals: number;
-  maxReferrals: number;
-  creditRedeemed: number;
-  className?: string;
-}
+import type { CreditSectionProps } from '../types/types';
 
 const CreditSection: React.FC<CreditSectionProps> = ({ 
   amount, 

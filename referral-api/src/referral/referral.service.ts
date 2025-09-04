@@ -3,8 +3,8 @@ import {
   Injectable,
   BadRequestException,
 } from '@nestjs/common';
-import { getSummary, sendReferralCode } from '../mock/referral.seed';
-import { ReferralSummary, SendResult } from './referral.types';
+import { getSummary, sendReferralCode } from './data/referral.seed';
+import { ReferralSummary, SendResult } from './types/referral.types';
 
 @Injectable()
 export class ReferralService {
@@ -13,10 +13,10 @@ export class ReferralService {
     return getSummary(customerId);
   }
 
-  sendCode(code: string): SendResult {
+  async sendCode(code: string): Promise<SendResult> {
     if (!code) throw new BadRequestException('code is required');
-
-    // sendReferralCode should throw BadRequestException if code invalid
-    return sendReferralCode(code);
+    
+    // sendReferralCode should throw if code not found
+    return await sendReferralCode(code);
   }
 }

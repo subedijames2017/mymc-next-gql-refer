@@ -4,15 +4,13 @@ import React from "react";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import ProgressBar from "../ProgressBar";
-import CodeSection from "../CodeSection";
-
-import type { ReferralViewProps } from "./ReferralMobile";
+import ProgressBar from "../../../components/ui/ProgressBar";
+import CodeSection from "./CodeSection";
+import type { ReferralViewProps } from "../types/types";
 
 const ReferralDesktop: React.FC<ReferralViewProps> = ({ data, sendingCode, onSendCode }) => {
   return (
     <div className="px-8 pt-10 pb-16 space-y-10">
-      {/* Main referral card */}
       <Card className="p-10 bg-muted border-none">
         <div className="max-w-lg mx-auto">
           <div className="flex justify-center mb-6">
@@ -68,7 +66,6 @@ const ReferralDesktop: React.FC<ReferralViewProps> = ({ data, sendingCode, onSen
         </div>
       </Card>
 
-      {/* Credits / stats strip */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Ready to use */}
         <Card className="p-4 md:p-6 bg-credit-bg border-none">
@@ -85,7 +82,6 @@ const ReferralDesktop: React.FC<ReferralViewProps> = ({ data, sendingCode, onSen
           </div>
         </Card>
 
-        {/* Total referrals this year */}
         <Card className="p-4 md:p-6 bg-muted border-none">
           <div className="text-center">
             <div className="text-xs md:text-sm text-muted-foreground mb-1">Total referrals this year</div>
@@ -95,7 +91,6 @@ const ReferralDesktop: React.FC<ReferralViewProps> = ({ data, sendingCode, onSen
           </div>
         </Card>
 
-        {/* Credit redeemed */}
         <Card className="p-4 md:p-6 bg-muted border-none">
           <div className="text-center">
             <div className="text-xs md:text-sm text-muted-foreground mb-1">Credit redeemed</div>

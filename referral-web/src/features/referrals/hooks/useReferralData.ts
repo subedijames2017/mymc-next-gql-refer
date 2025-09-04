@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
-import { GET_REFERRAL_SUMMARY, SEND_REFERRAL_CODE } from "@/graphql/queries";
+import { GET_REFERRAL_SUMMARY, SEND_REFERRAL_CODE } from "../graphql/queries";
 import { toast } from "@/hooks/use-toast";
 
 /* ---------------- UI Types ---------------- */
@@ -86,12 +86,6 @@ export const useReferralData = (customerId: string = "cus_123") => {
     };
   }, [data]);
 
-  /**
-   * Click-safe sender:
-   * - Accepts either a code string OR a click-like event
-   * - Prevents default + stops propagation if an event is provided
-   * - Falls back to the mapped referralCode if no string is provided
-   */
   const sendReferralCode = useCallback(
     async (
       arg?: string | { preventDefault?: () => void; stopPropagation?: () => void }
@@ -111,7 +105,7 @@ export const useReferralData = (customerId: string = "cus_123") => {
           variant: "destructive",
         });
         return {
-          ok: false,
+          success: false,
           message: "Referral code missing",
           timestamp: new Date().toISOString(),
         };
@@ -129,7 +123,7 @@ export const useReferralData = (customerId: string = "cus_123") => {
         toast({ title: "Code sent!", description: message });
 
         return {
-          ok: true,
+          success: true,
           message,
           timestamp:
             res.data?.sendReferralCode?.timestamp ?? new Date().toISOString(),
